@@ -2,6 +2,7 @@ import axios from "axios";
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
+import emailjs from "@emailjs/browser";
 
 export default function Navbar() {
   // STATES
@@ -12,56 +13,81 @@ export default function Navbar() {
   const [guests, setGuests] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
 
   // HANDLE BOOKING
-//   const handleBooking = () => {
-//     if (!name || !selectedDate || !selectedTime || !email || !guests) {
-//       setMessage("Please fill all details before confirming.");
-//       return;
-//     }
+  //   const handleBooking = () => {
+  //     if (!name || !selectedDate || !selectedTime || !email || !guests) {
+  //       setMessage("Please fill all details before confirming.");
+  //       return;
+  //     }
 
-//     setMessage(
-//       `Booking Confirmed!
-// Name: ${name}
-// Guests: ${guests}
-// Date: ${selectedDate}
-// Time: ${selectedTime}
-// Confirmation sent to: ${email}`
-//     );
-//   };
+  //     setMessage(
+  //       `Booking Confirmed!
+  // Name: ${name}
+  // Guests: ${guests}
+  // Date: ${selectedDate}
+  // Time: ${selectedTime}
+  // Confirmation sent to: ${email}`
+  //     );
+  //   };
 
-  const handleBooking = async () => {
-  
-   if (!name || !selectedDate || !selectedTime || !email || !guests) {
+  const handleBooking = async (e) => {
+    e.preventDefault();
+
+    if (!name || !selectedDate || !selectedTime || !email || !guests) {
       toast.error("Please fill all details before confirming.");
-       return;
-     }
-  try {
+      return;
+    }
+
     setLoading(true);
-    const result = await axios.post("https://restudent-backend.onrender.com",
-      { name, email, date: selectedDate, time: selectedTime, guests },
-      { withCredentials: true }
-    );
 
-    console.log(result.data);
-    setLoading(false);
-    
-    setIsOpen(false);
-    toast.success("Table booked Successfully");
-    setName("");
-    setEmail("");
-    setGuests("");
-    setSelectedDate("");
-    setSelectedTime("");
+    try {
+      const templateVars = {
+        name: name,
+        email: email,
+        date: selectedDate,
+        time: selectedTime,
+        guests: guests,
+        reply_to: email,
+      };
+      //Email to restaurant
+      await emailjs.send(
+        import.meta.env.VITE_APP_EMAILJS_SERVICE_ID,
+        import.meta.env.VITE_APP_EMAILJS_TEMPLATE_ID,
+        templateVars,
+        import.meta.env.VITE_APP_EMAILJS_PUBLIC_KEY
+      );
+      //email to customer
+      await emailjs.send(
+        import.meta.env.VITE_APP_EMAILJS_SERVICE_ID,
+        import.meta.env.VITE_APP_EMAILJS_CUSTOMER_TEMPLATE_ID,
+        {
+          name,
+          email,
+          date: selectedDate,
+          time: selectedTime,
+          guests,
+          client_email: email, // THIS decides the receiver
+        },
+        import.meta.env.VITE_APP_EMAILJS_PUBLIC_KEY
+      );
 
-  } catch (err) {
-    console.log(err);
-    setLoading(false)
-    toast.error("Something went wrong. Try again!");
-  }
-};
+      toast.success("Table booked Successfully");
 
+      setName("");
+      setEmail("");
+      setGuests("");
+      setSelectedDate("");
+      setSelectedTime("");
+      setIsOpen(false);
+    } catch (err) {
+      console.log(err);
+      toast.error("Something went wrong. Try again!");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <nav className="flex justify-between p-4 bg-black sticky top-0 z-50 shadow-md">
@@ -71,16 +97,36 @@ export default function Navbar() {
 
       {/* NAV LINKS */}
       <ul className="hidden sm:flex items-center justify-center gap-10 text-lg">
-        <Link to="/" className="cursor-pointer hover:text-green-400 duration-200">Home</Link>
-        <Link to="/menu" className="cursor-pointer hover:text-green-400 duration-200">Menu</Link>
-        <Link to="/about" className="cursor-pointer hover:text-green-400 duration-200">About</Link>
-        <Link to="/contact" className="cursor-pointer hover:text-green-400 duration-200">Contact</Link>
+        <Link
+          to="/"
+          className="cursor-pointer hover:text-green-400 duration-200"
+        >
+          Home
+        </Link>
+        <Link
+          to="/menu"
+          className="cursor-pointer hover:text-green-400 duration-200"
+        >
+          Menu
+        </Link>
+        <Link
+          to="/about"
+          className="cursor-pointer hover:text-green-400 duration-200"
+        >
+          About
+        </Link>
+        <Link
+          to="/contact"
+          className="cursor-pointer hover:text-green-400 duration-200"
+        >
+          Contact
+        </Link>
       </ul>
 
       {/* BOOK BUTTON */}
       <div>
         <button
-          onClick={()=>setIsOpen(true)}
+          onClick={() => setIsOpen(true)}
           className="px-5 py-2 bg-green-400 text-black rounded-lg font-semibold hover:bg-green-500 hover:scale-105 active:scale-95 duration-200 transition-all"
         >
           Book Table
@@ -143,17 +189,18 @@ export default function Navbar() {
 
             {/* MESSAGE */}
             {message && (
-              <p className="text-sm bg-gray-200 p-2 rounded mb-3">
-                {message}
-              </p>
+              <p className="text-sm bg-gray-200 p-2 rounded mb-3">{message}</p>
             )}
 
             <div className="flex justify-between mt-4">
               <button
-                onClick={handleBooking} disabled={loading}
-                className={`bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 ${loading && "opacity-50 cursor-not-allowed"}`}
+                onClick={handleBooking}
+                disabled={loading}
+                className={`bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 ${
+                  loading && "opacity-50 cursor-not-allowed"
+                }`}
               >
-                {loading?"Processing...":"Confirm"}
+                {loading ? "Processing..." : "Confirm"}
               </button>
 
               <button
